@@ -734,61 +734,66 @@ COMMIT;
             <h3>Definition</h3>
             <p>A schedule is the order of operations from concurrent transactions</p>
             <h3>Example with Alice & Bob:</h3>
-            <pre>T1: Transfer $500 from Alice to Bob
-T2: Check Alice's balance
+            <pre>-- T1: Transfer $500 from Alice to Bob
+BEGIN TRANSACTION;
+SELECT balance FROM accounts WHERE account_id = 1; -- Read(Alice)=$5000
+UPDATE accounts SET balance = 4500 WHERE account_id = 1; -- Write(Alice)
+SELECT balance FROM accounts WHERE account_id = 2; -- Read(Bob)=$3000
+UPDATE accounts SET balance = 3500 WHERE account_id = 2; -- Write(Bob)
+COMMIT;
 
-Operations:
-T1: Read(Alice)    -- $5000
-T1: Write(Alice)   -- $4500
-T1: Read(Bob)      -- $3000
-T1: Write(Bob)     -- $3500
-T2: Read(Alice)    -- What value does T2 see?</pre>
+-- T2: Check Alice's balance
+BEGIN TRANSACTION;
+SELECT balance FROM accounts WHERE account_id = 1; -- Read(Alice)=?
+COMMIT;</pre>
             <div class="highlight">
-                <span class="emoji">🤔</span>Answer depends on the schedule!
+                <span class="emoji">🤔</span>Answer depends on when T2 executes!
             </div>
         </div>
 
         <!-- Slide 27 -->
         <div class="slide">
             <h1>Serial Schedules</h1>
-            <h3>No Interleaving</h3>
+            <h3>No Interleaving - Execute One at a Time</h3>
             <div class="visual-schedule">
 <strong>Serial Schedule 1: T1 then T2</strong>
-T1: Read(Alice)   → $5000
-T1: Write(Alice)  → $4500
-T1: Read(Bob)     → $3000
-T1: Write(Bob)    → $3500
-T2: Read(Alice)   → $4500
+-- T1 executes completely first
+BEGIN TRANSACTION;
+SELECT balance FROM accounts WHERE account_id = 1; -- $5000
+UPDATE accounts SET balance = 4500 WHERE account_id = 1;
+SELECT balance FROM accounts WHERE account_id = 2; -- $3000
+UPDATE accounts SET balance = 3500 WHERE account_id = 2;
+COMMIT;
 
-<strong>Serial Schedule 2: T2 then T1</strong>
-T2: Read(Alice)   → $5000
-T1: Read(Alice)   → $5000
-T1: Write(Alice)  → $4500
-T1: Read(Bob)     → $3000
-T1: Write(Bob)    → $3500
+-- Then T2 executes
+BEGIN TRANSACTION;
+SELECT balance FROM accounts WHERE account_id = 1; -- $4500
+COMMIT;
             </div>
             <div class="highlight success">
-                <span class="emoji">✅</span>Always correct, but slow
+                <span class="emoji">✅</span>Always correct, but slow (no concurrency)
             </div>
         </div>
 
         <!-- Slide 28 -->
         <div class="slide">
             <h1>Concurrent Schedules</h1>
-            <h3>Interleaved Operations</h3>
+            <h3>Interleaved Operations - Conceptual View</h3>
+            <p>In practice, SQLite doesn't support true concurrent transactions, but this shows the concept:</p>
             <div class="visual-schedule">
-<strong>Concurrent Schedule:</strong>
-T1: Read(Alice)   → $5000
-T2: Read(Alice)   → $5000
-T1: Write(Alice)  → $4500
-T2: Read(Bob)     → $3000
-T1: Read(Bob)     → $3000
-T1: Write(Bob)    → $3500
+<strong>Concurrent Schedule (Interleaved):</strong>
+Time 1: T1 - SELECT balance FROM accounts WHERE account_id = 1; -- $5000
+Time 2: T2 - SELECT balance FROM accounts WHERE account_id = 1; -- $5000
+Time 3: T1 - UPDATE accounts SET balance = 4500 WHERE account_id = 1;
+Time 4: T2 - (sees old or new value depending on isolation)
+Time 5: T1 - SELECT balance FROM accounts WHERE account_id = 2; -- $3000
+Time 6: T1 - UPDATE accounts SET balance = 3500 WHERE account_id = 2;
+Time 7: T1 - COMMIT;
+Time 8: T2 - COMMIT;
             </div>
-            <h3>Advantages:</h3>
+            <h3>Benefits:</h3>
             <ul>
-                <li>Better CPU utilization</li>
-                <li>Reduced waiting time</li>
+                <li>Better CPU utilization (while waiting for I/O)</li>
                 <li>Higher throughput</li>
             </ul>
         </div>
@@ -816,20 +821,25 @@ T1: Write(Bob)    → $3500
         <div class="slide">
             <h1>Conflict Example</h1>
             <h3>Using Alice's Account</h3>
-            <pre>T1: Transfer $500 from Alice
-T2: Add interest to Alice's account
+            <p><strong>Scenario:</strong> T1 withdraws $500, T2 adds 5% interest</p>
+            <pre>-- T1: Withdrawal
+BEGIN TRANSACTION;
+SELECT balance FROM accounts WHERE account_id = 1; -- Read: $5000
+UPDATE accounts SET balance = 4500 WHERE account_id = 1; -- Write: $4500
+COMMIT;
 
-T1: Read(Alice)   -- $5000
-T2: Read(Alice)   -- $5000  ← No conflict (both reads)
-T1: Write(Alice)  -- $4500  ← Conflicts with T2's Read
-T2: Write(Alice)  -- $5250  ← Conflicts with T1's Write</pre>
+-- T2: Add interest
+BEGIN TRANSACTION;
+SELECT balance FROM accounts WHERE account_id = 1; -- Read: $5000
+UPDATE accounts SET balance = 5250 WHERE account_id = 1; -- Write: $5250
+COMMIT;</pre>
             <div class="highlight error">
-                <span class="emoji">⚠️</span>Conflicts exist! Order matters for correctness
+                <span class="emoji">⚠️</span>If interleaved incorrectly, results differ!
             </div>
             <div class="example-box">
-                <strong>If T1 then T2:</strong> $5000 → $4500 → $4725<br>
-                <strong>If T2 then T1:</strong> $5000 → $5250 → $4750<br>
-                Different results!
+                <strong>Serial T1→T2:</strong> $5000 → $4500 → $4725 (correct)<br>
+                <strong>Serial T2→T1:</strong> $5000 → $5250 → $4750 (also correct)<br>
+                <strong>Bad interleaving:</strong> Both read $5000, one update lost!
             </div>
         </div>
 
@@ -854,18 +864,29 @@ T2: Write(Alice)  -- $5250  ← Conflicts with T1's Write</pre>
         <div class="slide">
             <h1>Precedence Graph Example</h1>
             <h3>Three Concurrent Transactions</h3>
-            <pre>T1: Read(Alice), Write(Alice)
-T2: Read(Alice), Write(Bob)
-T3: Read(Bob), Write(Bob)
+            <pre>-- T1: Updates Alice
+BEGIN TRANSACTION;
+SELECT balance FROM accounts WHERE account_id = 1;
+UPDATE accounts SET balance = 4500 WHERE account_id = 1;
+COMMIT;
 
-Conflicts:
-T1 → T2 (both access Alice, T1 writes first)
-T2 → T3 (both access Bob, T2 writes first)</pre>
+-- T2: Reads Alice, updates Bob
+BEGIN TRANSACTION;
+SELECT balance FROM accounts WHERE account_id = 1;
+UPDATE accounts SET balance = 3500 WHERE account_id = 2;
+COMMIT;
+
+-- T3: Reads Bob, updates Bob
+BEGIN TRANSACTION;
+SELECT balance FROM accounts WHERE account_id = 2;
+UPDATE accounts SET balance = 4000 WHERE account_id = 2;
+COMMIT;</pre>
             <div class="visual-schedule">
-Graph: T1 → T2 → T3
+Conflicts:
+T1 writes Alice before T2 reads Alice → T1 → T2
+T2 writes Bob before T3 reads Bob → T2 → T3
 
-No cycle! This schedule is conflict serializable.
-Equivalent to serial order: T1, T2, T3
+Graph: T1 → T2 → T3 (No cycle! ✓ Serializable)
             </div>
         </div>
 
@@ -873,16 +894,23 @@ Equivalent to serial order: T1, T2, T3
         <div class="slide">
             <h1>Non-Serializable Example</h1>
             <h3>Schedule with Cycle</h3>
-            <pre>T1: Read(Alice), Write(Bob)
-T2: Read(Bob), Write(Alice)
+            <pre>-- T1: Read Alice, Write Bob
+BEGIN TRANSACTION;
+SELECT balance FROM accounts WHERE account_id = 1; -- Read Alice
+UPDATE accounts SET balance = 3500 WHERE account_id = 2; -- Write Bob
+COMMIT;
 
-T1: Read(Alice)
-T2: Read(Bob)
-T1: Write(Bob)    -- T1 → T2 (conflict on Bob)
-T2: Write(Alice)  -- T2 → T1 (conflict on Alice)</pre>
+-- T2: Read Bob, Write Alice  
+BEGIN TRANSACTION;
+SELECT balance FROM accounts WHERE account_id = 2; -- Read Bob
+UPDATE accounts SET balance = 4500 WHERE account_id = 1; -- Write Alice
+COMMIT;</pre>
             <div class="visual-schedule">
-Graph: T1 → T2
-       T2 → T1  (forms a cycle!)
+Conflicts:
+T1 writes Bob, T2 reads Bob → T1 → T2
+T2 writes Alice, T1 reads Alice → T2 → T1
+
+Graph: T1 ⇄ T2  (Cycle exists! ❌)
             </div>
             <div class="highlight error">
                 <span class="emoji">❌</span>Cycle detected! NOT conflict serializable
@@ -909,15 +937,26 @@ Graph: T1 → T2
             <h1>Recoverable Schedules</h1>
             <h3>Definition</h3>
             <p>Transaction commits only after all transactions whose changes it read have committed</p>
-            <h3>Example with Alice's Account:</h3>
+            <h3>Example - Recoverable:</h3>
             <div class="visual-schedule">
-T1: Write(Alice) = $4500
-T2: Read(Alice) = $4500   -- T2 reads from T1
-T1: Commit
-T2: Commit                -- T2 commits AFTER T1
+-- T1 updates Alice's balance
+BEGIN TRANSACTION;
+UPDATE accounts SET balance = 4500 WHERE account_id = 1;
+-- T1 NOT committed yet
+
+-- T2 reads the uncommitted value (in READ UNCOMMITTED mode)
+-- Then waits for T1 to commit
+BEGIN TRANSACTION;
+SELECT balance FROM accounts WHERE account_id = 1; -- Sees $4500
+
+-- T1 commits first
+COMMIT; -- T1
+
+-- Now T2 can safely commit
+COMMIT; -- T2
             </div>
             <div class="highlight success">
-                <span class="emoji">✅</span>This is recoverable - T2 waits for T1
+                <span class="emoji">✅</span>This is recoverable - T2 commits AFTER T1
             </div>
         </div>
 
@@ -926,15 +965,24 @@ T2: Commit                -- T2 commits AFTER T1
             <h1>Non-Recoverable Schedule</h1>
             <h3>Dangerous Scenario</h3>
             <div class="visual-schedule">
-T1: Write(Alice) = $4500
-T2: Read(Alice) = $4500   -- T2 reads uncommitted data
-T2: Commit                -- T2 commits first! ❌
-T1: Rollback              -- T1 rolls back
+-- T1 updates Alice
+BEGIN TRANSACTION;
+UPDATE accounts SET balance = 4500 WHERE account_id = 1;
+-- T1 NOT committed yet
+
+-- T2 reads uncommitted value and commits FIRST
+BEGIN TRANSACTION;
+SELECT balance FROM accounts WHERE account_id = 1; -- Reads $4500
+COMMIT; -- T2 commits ❌
+
+-- T1 rolls back!
+ROLLBACK; -- T1 aborts
             </div>
             <div class="highlight error">
                 <span class="emoji">💥</span><strong>Problem:</strong> T2 committed based on data that was rolled back!
                 <br>Database now in inconsistent state - cannot recover
             </div>
+            <p><strong>Note:</strong> SQLite's default SERIALIZABLE isolation prevents this</p>
         </div>
 
         <!-- Slide 37 -->
@@ -942,15 +990,16 @@ T1: Rollback              -- T1 rolls back
             <h1>Cascading Rollbacks</h1>
             <h3>The Domino Effect</h3>
             <div class="timeline">
-                <div class="timeline-item">T1: Write(Alice) = $4500</div>
-                <div class="timeline-item">T2: Read(Alice) = $4500</div>
-                <div class="timeline-item">T3: Read(Alice) = $4500</div>
-                <div class="timeline-item">T4: Read(Alice) = $4500</div>
-                <div class="timeline-item">T1: Rollback → T2 must rollback → T3 must rollback → T4 must rollback</div>
+                <div class="timeline-item">T1: UPDATE accounts SET balance = 4500 WHERE account_id = 1;</div>
+                <div class="timeline-item">T2: SELECT balance FROM accounts WHERE account_id = 1; -- Reads $4500</div>
+                <div class="timeline-item">T3: SELECT balance FROM accounts WHERE account_id = 1; -- Reads $4500</div>
+                <div class="timeline-item">T4: SELECT balance FROM accounts WHERE account_id = 1; -- Reads $4500</div>
+                <div class="timeline-item">T1: ROLLBACK; → Forces T2, T3, T4 to rollback too!</div>
             </div>
             <div class="highlight error">
                 <span class="emoji">📉</span>One failure cascades through multiple transactions
             </div>
+            <p><strong>Note:</strong> In practice, databases prevent this with proper isolation levels</p>
         </div>
 
         <!-- Slide 38 -->
@@ -960,14 +1009,20 @@ T1: Rollback              -- T1 rolls back
             <p>Transaction reads value only after the writing transaction commits</p>
             <div class="visual-schedule">
 <strong>Cascadeless Schedule:</strong>
-T1: Write(Alice) = $4500
-T1: Commit                -- T1 commits first
-T2: Read(Alice) = $4500   -- Now T2 can read
-T2: Commit
+-- T1 updates and commits first
+BEGIN TRANSACTION;
+UPDATE accounts SET balance = 4500 WHERE account_id = 1;
+COMMIT; -- T1 commits
+
+-- Now T2 can safely read
+BEGIN TRANSACTION;
+SELECT balance FROM accounts WHERE account_id = 1; -- Reads $4500
+COMMIT; -- T2 commits
             </div>
             <div class="highlight success">
                 <span class="emoji">🛡️</span>No cascading rollbacks possible - T2 only reads committed data
             </div>
+            <p><strong>Implementation:</strong> READ COMMITTED or higher isolation level</p>
         </div>
 
         <!-- Slide 39 -->
@@ -1021,22 +1076,27 @@ T2: Commit
         <!-- Slide 41 -->
         <div class="slide">
             <h1>Locking Example</h1>
-            <h3>Transfer Using Locks</h3>
-            <pre>BEGIN TRANSACTION;
+            <h3>Transfer Using Locks (Conceptual)</h3>
+            <pre>-- Note: SQLite doesn't expose lock commands directly
+-- This shows the concept that happens internally
 
-lock-X(Alice);              -- Get exclusive lock
-READ balance FROM accounts WHERE account_id = 1;
+BEGIN TRANSACTION;
+
+-- SQLite internally acquires locks when you access data
+SELECT balance FROM accounts WHERE account_id = 1; 
+-- Acquires shared lock on Alice's row
+
 UPDATE accounts SET balance = balance - 500 
 WHERE account_id = 1;
+-- Upgrades to exclusive lock on Alice's row
 
-lock-X(Bob);                -- Get exclusive lock
-READ balance FROM accounts WHERE account_id = 2;
+SELECT balance FROM accounts WHERE account_id = 2;
 UPDATE accounts SET balance = balance + 500 
 WHERE account_id = 2;
+-- Acquires exclusive lock on Bob's row
 
 COMMIT;
-unlock(Alice);              -- Release locks
-unlock(Bob);</pre>
+-- Releases all locks</pre>
         </div>
 
         <!-- Slide 42 -->
@@ -1063,19 +1123,23 @@ unlock(Bob);</pre>
         <div class="slide">
             <h1>2PL Example</h1>
             <h3>Visualizing the Phases</h3>
+            <p><strong>Conceptual view of Two-Phase Locking:</strong></p>
             <div class="visual-schedule">
-<strong>Growing Phase:</strong>
-lock-X(Alice)     ↑
-lock-X(Bob)       ↑ Acquiring locks
-lock-S(Charlie)   ↑
+<strong>Growing Phase (Acquiring Locks):</strong>
+BEGIN TRANSACTION;
+SELECT * FROM accounts WHERE account_id = 1;  -- Lock Alice ↑
+SELECT * FROM accounts WHERE account_id = 2;  -- Lock Bob ↑
+SELECT * FROM accounts WHERE account_id = 3;  -- Lock Charlie ↑
 
 --- Lock Point (maximum locks held) ---
 
-<strong>Shrinking Phase:</strong>
-unlock(Alice)     ↓
-unlock(Charlie)   ↓ Releasing locks
-unlock(Bob)       ↓
+<strong>Shrinking Phase (Releasing Locks):</strong>
+COMMIT; -- Release all locks ↓
+-- Alice unlocked ↓
+-- Bob unlocked ↓
+-- Charlie unlocked ↓
             </div>
+            <p><strong>Note:</strong> SQLite implements this automatically</p>
         </div>
 
         <!-- Slide 44 -->
