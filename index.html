@@ -225,6 +225,54 @@
             padding-left: 12px;
             font-size: 0.95em;
         }
+
+        .analogy-box {
+            background: #fff3cd;
+            padding: 15px;
+            border-left: 4px solid #ffc107;
+            margin: 15px 0;
+            border-radius: 5px;
+        }
+
+        .analogy-box::before {
+            content: "🎯 Real-World Analogy: ";
+            font-weight: bold;
+            color: #856404;
+        }
+
+        .step-list {
+            counter-reset: step;
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .step-list li {
+            counter-increment: step;
+            padding: 10px;
+            margin: 8px 0;
+            background: white;
+            border-radius: 6px;
+            border-left: 4px solid #667eea;
+            position: relative;
+            padding-left: 50px;
+        }
+
+        .step-list li::before {
+            content: counter(step);
+            position: absolute;
+            left: 12px;
+            top: 10px;
+            background: #667eea;
+            color: white;
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
     </style>
 </head>
 <body>
@@ -234,13 +282,11 @@
             <h1>Advanced Database Systems</h1>
             <h2>Transaction Management & Recovery</h2>
             <ul>
-                <li>Transaction Management</li>
-                <li>ACID Properties</li>
+                <li>Transaction Management & ACID</li>
                 <li>Schedules & Serializability</li>
-                <li>Concurrency Control</li>
+                <li>Concurrency Control Mechanisms</li>
                 <li>Database Recovery</li>
-                <li>Log-Based Recovery</li>
-                <li>Checkpoints</li>
+                <li>Log-Based Recovery & Checkpoints</li>
             </ul>
         </div>
 
@@ -251,7 +297,10 @@
             <p>A transaction is a logical unit of work that contains one or more SQL statements.</p>
             <h3>Key Concept</h3>
             <p>All operations must complete successfully, or none should take effect.</p>
-            <h3>Example: Bank Transfer Transaction</h3>
+            <div class="analogy-box">
+                Like transferring money: Either both deduct AND deposit happen, or neither happens. No middle ground!
+            </div>
+            <h3>Example: Bank Transfer</h3>
             <pre>BEGIN TRANSACTION;
 UPDATE accounts SET balance = balance - 100 WHERE account_id = 1;
 UPDATE accounts SET balance = balance + 100 WHERE account_id = 2;
@@ -332,15 +381,15 @@ CREATE TABLE transactions_log (
             <h2>"All or Nothing"</h2>
             <h3>Definition</h3>
             <p>A transaction must be treated as a single, indivisible unit.</p>
+            <div class="analogy-box">
+                Like a chemical reaction - either all reactants form products, or nothing changes. No half-reactions!
+            </div>
             <h3>Either:</h3>
             <ul>
                 <li>All operations complete successfully (COMMIT)</li>
                 <li>All operations are undone (ROLLBACK)</li>
             </ul>
             <p><strong>No partial execution is allowed.</strong></p>
-            <div class="highlight">
-                <span class="emoji">⚛️</span>Think of it like a chemical reaction - either all reactants form products, or nothing changes.
-            </div>
         </div>
 
         <!-- Slide 8 -->
@@ -391,51 +440,25 @@ ROLLBACK;  -- All changes undone</pre>
 
         <!-- Slide 10 -->
         <div class="slide">
-            <h1>Atomicity - Real Example</h1>
-            <h3>E-commerce Order Processing</h3>
-            <pre>BEGIN TRANSACTION;
--- 1. Deduct inventory
-UPDATE products SET stock = stock - 1 WHERE product_id = 101;
-
--- 2. Create order
-INSERT INTO orders (customer_id, product_id, amount) 
-VALUES (5, 101, 299.99);
-
--- 3. Process payment
-INSERT INTO payments (order_id, amount, status) 
-VALUES (LAST_INSERT_ID(), 299.99, 'charged');
-
--- 4. Update loyalty points
-UPDATE customers SET loyalty_points = loyalty_points + 30 
-WHERE customer_id = 5;
-
-COMMIT;</pre>
-            <div class="highlight">
-                <span class="emoji">💡</span>If ANY step fails, ALL steps must be undone
-            </div>
-        </div>
-
-        <!-- Slide 11 -->
-        <div class="slide">
             <h1>Consistency</h1>
             <h2>Maintaining Database Rules</h2>
             <h3>Definition</h3>
             <p>A transaction must take the database from one valid state to another valid state.</p>
+            <div class="analogy-box">
+                Like accounting - books must always balance. Total money before = Total money after.
+            </div>
             <h3>Ensures:</h3>
             <ul>
                 <li>All integrity constraints are satisfied</li>
                 <li>Business rules are maintained</li>
                 <li>Database remains in a correct state</li>
             </ul>
-            <div class="highlight info">
-                <span class="emoji">⚖️</span>Example: Total money in bank = Sum of all balances (before and after)
-            </div>
         </div>
 
-        <!-- Slide 12 -->
+        <!-- Slide 11 -->
         <div class="slide">
             <h1>Consistency Example</h1>
-            <h3>Using Our Accounts Table</h3>
+            <h3>Conservation of Money</h3>
             <pre>-- Before transaction
 SELECT SUM(balance) FROM accounts;  
 -- Returns: $17,500
@@ -447,177 +470,43 @@ COMMIT;
 
 -- After transaction
 SELECT SUM(balance) FROM accounts;  
--- Still Returns: $17,500</pre>
-            <div class="example-box">
-                <strong>Consistency Rule:</strong> Money is neither created nor destroyed
-                <br><strong>Before:</strong> $5,000 + $3,000 + $7,500 + $2,000 = $17,500
-                <br><strong>After:</strong> $4,000 + $4,000 + $7,500 + $2,000 = $17,500 ✓
+-- Still Returns: $17,500 ✓</pre>
+            <div class="highlight success">
+                <span class="emoji">⚖️</span>Money is neither created nor destroyed - consistency maintained!
             </div>
         </div>
 
-        <!-- Slide 13 -->
-        <div class="slide">
-            <h1>Consistency - Constraints</h1>
-            <h3>CHECK Constraint Example</h3>
-            <pre>ALTER TABLE accounts 
-ADD CONSTRAINT balance_check CHECK (balance >= 0);
-
--- This transaction will FAIL
-BEGIN TRANSACTION;
-UPDATE accounts SET balance = balance - 6000 
-WHERE account_id = 1;  
--- Alice only has $5,000!
--- Error: CHECK constraint failed: balance >= 0
-
-ROLLBACK;</pre>
-            <div class="highlight error">
-                <span class="emoji">🚫</span>Database prevents inconsistent state - transaction rejected
-            </div>
-        </div>
-
-        <!-- Slide 14 -->
-        <div class="slide">
-            <h1>Consistency - Foreign Keys</h1>
-            <h3>Referential Integrity with Our Tables</h3>
-            <pre>-- transactions_log references accounts
-BEGIN TRANSACTION;
-INSERT INTO transactions_log 
-    (account_id, txn_type, amount) 
-VALUES (999, 'deposit', 100.00);
--- Error: FOREIGN KEY constraint failed
--- Account 999 doesn't exist!
-ROLLBACK;
-
--- This works:
-INSERT INTO transactions_log 
-    (account_id, txn_type, amount) 
-VALUES (1, 'deposit', 100.00);  -- Alice's account exists</pre>
-        </div>
-
-        <!-- Slide 15 -->
+        <!-- Slide 12 -->
         <div class="slide">
             <h1>Isolation</h1>
             <h2>Concurrent Execution</h2>
             <h3>Definition</h3>
             <p>Multiple transactions executing concurrently should not interfere with each other.</p>
-            <h3>The Challenge</h3>
-            <p>Alice and Bob both try to withdraw from the same account simultaneously</p>
-            <div class="example-box">
-                <strong>Without Isolation:</strong> Both see balance = $5000, both withdraw $4000
-                <br><strong>Result:</strong> Account overdrawn by $3000!
-                <br><strong>With Isolation:</strong> One transaction waits, sees updated balance
+            <div class="analogy-box">
+                Like multiple people editing a document - they shouldn't see each other's unfinished work or accidentally overwrite changes.
             </div>
+            <h3>The Challenge</h3>
+            <p>Balance between isolation (correctness) and performance (speed)</p>
         </div>
 
-        <!-- Slide 16 -->
+        <!-- Slide 13 -->
         <div class="slide">
             <h1>Lost Update Problem</h1>
-            <h3>Using Alice's Account</h3>
+            <h3>When Isolation Fails</h3>
             <div class="timeline">
                 <div class="timeline-item"><strong>T1:</strong> Read balance = $5,000 (Alice's withdrawal)</div>
                 <div class="timeline-item"><strong>T2:</strong> Read balance = $5,000 (Bob's deposit)</div>
-                <div class="timeline-item"><strong>T1:</strong> Write balance = $5,000 - $500 = $4,500</div>
-                <div class="timeline-item"><strong>T2:</strong> Write balance = $5,000 + $300 = $5,300</div>
+                <div class="timeline-item"><strong>T1:</strong> Write balance = $4,500 (deduct $500)</div>
+                <div class="timeline-item"><strong>T2:</strong> Write balance = $5,300 (add $300)</div>
             </div>
             <div class="highlight error">
                 <span class="emoji">⚠️</span><strong>Problem:</strong> T1's withdrawal lost! Should be $4,800, but it's $5,300
             </div>
         </div>
 
-        <!-- Slide 17 -->
+        <!-- Slide 14 -->
         <div class="slide">
             <h1>Isolation Levels</h1>
-            <h3>Four Standard Levels:</h3>
-            <ul>
-                <li><strong>READ UNCOMMITTED</strong> - Lowest isolation, allows dirty reads</li>
-                <li><strong>READ COMMITTED</strong> - Prevents dirty reads</li>
-                <li><strong>REPEATABLE READ</strong> - Prevents dirty and non-repeatable reads</li>
-                <li><strong>SERIALIZABLE</strong> - Highest isolation, prevents all anomalies</li>
-            </ul>
-            <div class="highlight">
-                <span class="emoji">🔒</span><strong>Trade-off:</strong> Higher isolation = More consistency, Lower performance
-            </div>
-        </div>
-
-        <!-- Slide 18 -->
-        <div class="slide">
-            <h1>Dirty Read Problem</h1>
-            <h3>Using Alice's Account</h3>
-            <div class="visual-schedule">
-<strong>Time  T1 (Withdrawal)              T2 (Balance Check)</strong>
-1     BEGIN TRANSACTION
-2     UPDATE accounts 
-      SET balance = 4500
-      WHERE account_id = 1
-      -- Not committed!
-3                                   BEGIN TRANSACTION
-4                                   SELECT balance 
-                                    FROM accounts
-                                    WHERE account_id = 1
-                                    → Reads $4500 ❌
-5     ROLLBACK
-      -- Balance back to $5000
-6                                   -- T2 has wrong data!
-            </div>
-            <div class="highlight error">
-                <span class="emoji">💀</span>T2 read uncommitted "dirty" data
-            </div>
-        </div>
-
-        <!-- Slide 19 -->
-        <div class="slide">
-            <h1>Non-Repeatable Read</h1>
-            <h3>Using Bob's Account</h3>
-            <div class="visual-schedule">
-<strong>Time  T1 (Report Generation)       T2 (Deposit)</strong>
-1     BEGIN TRANSACTION
-2     SELECT balance 
-      FROM accounts
-      WHERE account_id = 2
-      → Returns $3000
-3                                   BEGIN TRANSACTION
-4                                   UPDATE accounts 
-                                    SET balance = 3500
-                                    WHERE account_id = 2
-5                                   COMMIT
-6     SELECT balance 
-      FROM accounts
-      WHERE account_id = 2
-      → Returns $3500 ❌
-            </div>
-            <div class="highlight error">
-                <span class="emoji">🔄</span>Same query, different result in same transaction
-            </div>
-        </div>
-
-        <!-- Slide 20 -->
-        <div class="slide">
-            <h1>Phantom Read Problem</h1>
-            <h3>Using Our Accounts Table</h3>
-            <div class="visual-schedule">
-<strong>Time  T1 (Report)                  T2 (New Account)</strong>
-1     BEGIN TRANSACTION
-2     SELECT COUNT(*) 
-      FROM accounts 
-      WHERE balance > 5000
-      → Returns 2 (Charlie, Alice)
-3                                   BEGIN TRANSACTION
-4                                   INSERT INTO accounts 
-                                    VALUES (5, 'Eve', 6000, 'Checking')
-5                                   COMMIT
-6     SELECT COUNT(*) 
-      FROM accounts 
-      WHERE balance > 5000
-      → Returns 3 ❌
-            </div>
-            <div class="highlight error">
-                <span class="emoji">👻</span>"Phantom" row appeared during transaction
-            </div>
-        </div>
-
-        <!-- Slide 21 -->
-        <div class="slide">
-            <h1>Isolation Levels Comparison</h1>
             <table>
                 <tr>
                     <th>Level</th>
@@ -650,665 +539,872 @@ VALUES (1, 'deposit', 100.00);  -- Alice's account exists</pre>
                     <td>✅ Prevented</td>
                 </tr>
             </table>
+            <div class="highlight">
+                <span class="emoji">🔒</span><strong>Trade-off:</strong> Higher isolation = More consistency, Lower performance
+            </div>
         </div>
 
-        <!-- Slide 22 -->
-        <div class="slide">
-            <h1>Setting Isolation Levels</h1>
-            <pre>-- PostgreSQL
-SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
-
--- MySQL
-SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ;
-
--- SQL Server
-SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
-
--- Example with our accounts
-SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
-BEGIN TRANSACTION;
-SELECT * FROM accounts WHERE account_id = 1;
--- No other transaction can modify this row until we commit
-COMMIT;</pre>
-        </div>
-
-        <!-- Slide 23 -->
+        <!-- Slide 15 -->
         <div class="slide">
             <h1>Durability</h1>
             <h2>Permanent Changes</h2>
             <h3>Definition</h3>
             <p>Once a transaction commits, its changes must persist even in case of system failures.</p>
+            <div class="analogy-box">
+                Like saving a document - once you click "Save", it should survive even if power goes out!
+            </div>
             <h3>Guarantees:</h3>
             <ul>
                 <li>Committed transactions survive crashes</li>
                 <li>Changes written to non-volatile storage</li>
                 <li>Recovery mechanisms restore data</li>
             </ul>
-            <div class="example-box">
-                <strong>Scenario:</strong> Alice transfers $1,000, sees "Success", then power failure.
-                <br><strong>Durability:</strong> When system restarts, transfer is still recorded!
-            </div>
         </div>
 
-        <!-- Slide 24 -->
+        <!-- NEW ENHANCED SCHEDULES SECTION -->
+        
+        <!-- Slide 16 -->
         <div class="slide">
-            <h1>Durability - Write-Ahead Log</h1>
-            <h3>How It Works</h3>
-            <pre>BEGIN TRANSACTION;
-UPDATE accounts SET balance = 4000 WHERE account_id = 1;
-COMMIT;
-
--- Behind the scenes:
--- 1. Write to transaction log (disk):
---    "UPDATE accounts SET balance=4000 WHERE account_id=1"
--- 2. Mark log entry as COMMITTED
--- 3. Return success to user
--- 4. Later: Apply changes to actual data files
--- 5. Eventually: Remove from log</pre>
-            <div class="highlight success">
-                <span class="emoji">📝</span>Even if crash after COMMIT, log ensures recovery
+            <h1>Understanding Schedules</h1>
+            <h3>What is a Schedule?</h3>
+            <p>A <strong>schedule</strong> is the <strong>order</strong> in which operations from multiple transactions are executed.</p>
+            <div class="analogy-box">
+                Restaurant kitchen with multiple chefs (transactions). A schedule is the order they use the stove, oven, counter (resources).
             </div>
-        </div>
-
-        <!-- Slide 25 -->
-        <div class="slide">
-            <h1>Concurrency Control</h1>
-            <h3>Why We Need It</h3>
-            <p>Multiple users accessing our accounts table simultaneously</p>
-            <h3>Benefits:</h3>
+            <h3>Three Types:</h3>
             <ul>
-                <li>Higher throughput (more transactions/second)</li>
-                <li>Better response time</li>
-                <li>Efficient resource use</li>
+                <li><strong>Serial</strong> - One transaction at a time</li>
+                <li><strong>Concurrent</strong> - Operations interleaved</li>
+                <li><strong>Serializable</strong> - Concurrent but produces serial result</li>
             </ul>
-            <h3>Example Scenario:</h3>
-            <div class="example-box">
-                100 customers all checking balances, making deposits, transfers at the same time. 
-                Without concurrency control: chaos. With it: smooth operation.
-            </div>
         </div>
 
-        <!-- Slide 26 -->
-        <div class="slide">
-            <h1>Schedules</h1>
-            <h3>Definition</h3>
-            <p>A schedule is the order of operations from concurrent transactions</p>
-            <h3>Example with Alice & Bob:</h3>
-            <pre>-- T1: Transfer $500 from Alice to Bob
-BEGIN TRANSACTION;
-SELECT balance FROM accounts WHERE account_id = 1; -- Read(Alice)=$5000
-UPDATE accounts SET balance = 4500 WHERE account_id = 1; -- Write(Alice)
-SELECT balance FROM accounts WHERE account_id = 2; -- Read(Bob)=$3000
-UPDATE accounts SET balance = 3500 WHERE account_id = 2; -- Write(Bob)
-COMMIT;
-
--- T2: Check Alice's balance
-BEGIN TRANSACTION;
-SELECT balance FROM accounts WHERE account_id = 1; -- Read(Alice)=?
-COMMIT;</pre>
-            <div class="highlight">
-                <span class="emoji">🤔</span>Answer depends on when T2 executes!
-            </div>
-        </div>
-
-        <!-- Slide 27 -->
+        <!-- Slide 17 -->
         <div class="slide">
             <h1>Serial Schedules</h1>
-            <h3>No Interleaving - Execute One at a Time</h3>
+            <h3>Complete One, Then Next</h3>
             <div class="visual-schedule">
-<strong>Serial Schedule 1: T1 then T2</strong>
--- T1 executes completely first
-BEGIN TRANSACTION;
-SELECT balance FROM accounts WHERE account_id = 1; -- $5000
-UPDATE accounts SET balance = 4500 WHERE account_id = 1;
-SELECT balance FROM accounts WHERE account_id = 2; -- $3000
-UPDATE accounts SET balance = 3500 WHERE account_id = 2;
-COMMIT;
+<strong>Serial Schedule: T1 then T2</strong>
 
--- Then T2 executes
-BEGIN TRANSACTION;
-SELECT balance FROM accounts WHERE account_id = 1; -- $4500
-COMMIT;
+T1: SELECT balance FROM accounts WHERE account_id = 1; -- $5000
+T1: UPDATE accounts SET balance = 4500 WHERE account_id = 1;
+T1: COMMIT;
+
+T2: SELECT balance FROM accounts WHERE account_id = 1; -- $4500
+T2: UPDATE accounts SET balance = 4725 WHERE account_id = 1; -- +5%
+T2: COMMIT;
+
+<strong>Final Result: $4725 ✓ Correct!</strong>
             </div>
             <div class="highlight success">
                 <span class="emoji">✅</span>Always correct, but slow (no concurrency)
             </div>
         </div>
 
-        <!-- Slide 28 -->
+        <!-- Slide 18 -->
         <div class="slide">
             <h1>Concurrent Schedules</h1>
-            <h3>Interleaved Operations - Conceptual View</h3>
-            <p>In practice, SQLite doesn't support true concurrent transactions, but this shows the concept:</p>
+            <h3>Operations Interleaved</h3>
             <div class="visual-schedule">
-<strong>Concurrent Schedule (Interleaved):</strong>
-Time 1: T1 - SELECT balance FROM accounts WHERE account_id = 1; -- $5000
-Time 2: T2 - SELECT balance FROM accounts WHERE account_id = 1; -- $5000
-Time 3: T1 - UPDATE accounts SET balance = 4500 WHERE account_id = 1;
-Time 4: T2 - (sees old or new value depending on isolation)
-Time 5: T1 - SELECT balance FROM accounts WHERE account_id = 2; -- $3000
-Time 6: T1 - UPDATE accounts SET balance = 3500 WHERE account_id = 2;
-Time 7: T1 - COMMIT;
-Time 8: T2 - COMMIT;
+<strong>Concurrent Schedule (Problematic):</strong>
+
+Time 1: T1 - SELECT balance FROM accounts... -- Reads $5000
+Time 2: T2 - SELECT balance FROM accounts... -- Reads $5000 (same!)
+Time 3: T1 - UPDATE accounts SET balance = 4500... (deduct $500)
+Time 4: T2 - UPDATE accounts SET balance = 5250... (+5% of $5000)
+Time 5: T1 - COMMIT;
+Time 6: T2 - COMMIT;
+
+<strong>Final Result: $5250 ✗ Wrong! Should be $4725</strong>
+<strong>T1's deduction was lost!</strong>
+            </div>
+            <div class="highlight error">
+                <span class="emoji">❌</span>Lost Update Problem - need concurrency control!
+            </div>
+        </div>
+
+        <!-- Slide 19 -->
+        <div class="slide">
+            <h1>Serializable Schedules</h1>
+            <h3>Goal: Best of Both Worlds</h3>
+            <p>A concurrent schedule that produces the <strong>same result</strong> as some serial schedule.</p>
+            <div class="example-box">
+                <strong>Analogy:</strong> Multiple chefs working simultaneously (concurrent) but the dish tastes identical to one chef doing everything in order (serial).
+            </div>
+            <div class="highlight info">
+                <span class="emoji">🎯</span><strong>Goal:</strong> Speed of concurrent + Correctness of serial
+            </div>
+            <p><strong>Question:</strong> How do we test if a schedule is serializable?<br>
+            <strong>Answer:</strong> Conflict Serializability Test!</p>
+        </div>
+
+        <!-- Slide 20 -->
+        <div class="slide">
+            <h1>Conflict Serializability</h1>
+            <h3>What is a Conflict?</h3>
+            <p>Two operations <strong>conflict</strong> if:</p>
+            <ol class="step-list">
+                <li>They belong to <strong>different</strong> transactions</li>
+                <li>They access the <strong>same</strong> data item</li>
+                <li>At least one is a <strong>WRITE</strong> operation</li>
+            </ol>
+            <div class="example-box">
+                <strong>Examples:</strong><br>
+                T1 reads Alice, T2 writes Alice → <strong>Conflict!</strong> ⚠️<br>
+                T1 writes Bob, T2 reads Bob → <strong>Conflict!</strong> ⚠️<br>
+                T1 reads Alice, T2 reads Alice → <strong>No conflict</strong> ✓
+            </div>
+        </div>
+
+        <!-- Slide 21 -->
+        <div class="slide">
+            <h1>Types of Conflicts</h1>
+            <table>
+                <tr>
+                    <th>Conflict Type</th>
+                    <th>T1 Operation</th>
+                    <th>T2 Operation</th>
+                    <th>Problem</th>
+                </tr>
+                <tr>
+                    <td><strong>Read-Write (RW)</strong></td>
+                    <td>Read(Alice)</td>
+                    <td>Write(Alice)</td>
+                    <td>T1 might read old value</td>
+                </tr>
+                <tr>
+                    <td><strong>Write-Read (WR)</strong></td>
+                    <td>Write(Alice)</td>
+                    <td>Read(Alice)</td>
+                    <td>Dirty read possible</td>
+                </tr>
+                <tr>
+                    <td><strong>Write-Write (WW)</strong></td>
+                    <td>Write(Alice)</td>
+                    <td>Write(Alice)</td>
+                    <td>Lost update possible</td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- Slide 22 -->
+        <div class="slide">
+            <h1>Precedence Graph Method</h1>
+            <h3>Testing Serializability</h3>
+            <ol class="step-list">
+                <li>Draw a <strong>node</strong> for each transaction</li>
+                <li>Draw an <strong>arrow T1 → T2</strong> if T1's operation conflicts with and comes before T2's operation</li>
+                <li>Check for <strong>cycles</strong> in the graph</li>
+                <li><strong>No cycle</strong> = Conflict Serializable ✓<br><strong>Cycle exists</strong> = NOT Serializable ✗</li>
+            </ol>
+        </div>
+
+        <!-- Slide 23 -->
+        <div class="slide">
+            <h1>Precedence Graph Example</h1>
+            <h3>Serializable Schedule</h3>
+            <pre>-- T1: Update Alice
+BEGIN; SELECT balance FROM accounts WHERE account_id = 1;
+UPDATE accounts SET balance = 4500 WHERE account_id = 1; COMMIT;
+
+-- T2: Read Alice, Update Bob  
+BEGIN; SELECT balance FROM accounts WHERE account_id = 1;
+UPDATE accounts SET balance = 3500 WHERE account_id = 2; COMMIT;
+
+-- T3: Read Bob, Update Charlie
+BEGIN; SELECT balance FROM accounts WHERE account_id = 2;
+UPDATE accounts SET balance = 8000 WHERE account_id = 3; COMMIT;</pre>
+            <div class="visual-schedule">
+<strong>Conflicts:</strong>
+T1 writes Alice, T2 reads Alice → T1 → T2
+T2 writes Bob, T3 reads Bob → T2 → T3
+
+<strong>Graph:</strong> T1 → T2 → T3
+
+<strong>No cycle! ✓ This schedule IS conflict serializable</strong>
+Equivalent to serial order: T1, T2, T3
+            </div>
+        </div>
+
+        <!-- Slide 24 -->
+        <div class="slide">
+            <h1>Non-Serializable Example</h1>
+            <h3>Schedule with Cycle</h3>
+            <pre>-- T1: Read Alice, Write Bob
+BEGIN; 
+SELECT * FROM accounts WHERE account_id = 1; -- Read Alice
+UPDATE accounts SET balance = 3500 WHERE account_id = 2; -- Write Bob
+COMMIT;
+
+-- T2: Read Bob, Write Alice
+BEGIN;
+SELECT * FROM accounts WHERE account_id = 2; -- Read Bob
+UPDATE accounts SET balance = 4500 WHERE account_id = 1; -- Write Alice
+COMMIT;</pre>
+            <div class="visual-schedule">
+<strong>Conflicts:</strong>
+T1 writes Bob, T2 reads Bob → T1 → T2
+T2 writes Alice, T1 reads Alice → T2 → T1
+
+<strong>Graph:</strong> T1 ⇄ T2  (Cycle!)
+
+<strong>❌ NOT conflict serializable - cannot be reordered to serial</strong>
+            </div>
+        </div>
+
+        <!-- Slide 25 -->
+        <div class="slide">
+            <h1>View Serializability</h1>
+            <h3>Less Restrictive Approach</h3>
+            <p>Two schedules are <strong>view equivalent</strong> if:</p>
+            <ol class="step-list">
+                <li><strong>Same initial reads:</strong> Transactions read same initial values</li>
+                <li><strong>Same read-from:</strong> If T2 reads value written by T1, this is preserved</li>
+                <li><strong>Same final writes:</strong> Final database state is identical</li>
+            </ol>
+            <div class="highlight info">
+                <span class="emoji">💡</span><strong>Relationship:</strong> View Serializable ⊇ Conflict Serializable<br>(View is broader - includes more schedules)
+            </div>
+        </div>
+
+        <!-- CONCURRENCY CONTROL SECTION -->
+
+        <!-- Slide 26 -->
+        <div class="slide">
+            <h1>Concurrency Control</h1>
+            <h3>Why Do We Need It?</h3>
+            <p>To ensure concurrent transactions don't interfere while maximizing performance.</p>
+            <div class="analogy-box">
+                Library with one copy of a popular book. Concurrency control is the checkout system preventing two people from taking the same book while allowing many to browse different books.
             </div>
             <h3>Benefits:</h3>
             <ul>
-                <li>Better CPU utilization (while waiting for I/O)</li>
-                <li>Higher throughput</li>
+                <li>Higher throughput (more transactions/second)</li>
+                <li>Better response time</li>
+                <li>Efficient resource use</li>
             </ul>
+        </div>
+
+        <!-- Slide 27 -->
+        <div class="slide">
+            <h1>Lock-Based Protocols</h1>
+            <h3>Controlling Access to Data</h3>
+            <p>Use <strong>locks</strong> to control who can read/write data items.</p>
+            <table>
+                <tr>
+                    <th>Lock Type</th>
+                    <th>Purpose</th>
+                    <th>Who Can Hold It?</th>
+                </tr>
+                <tr>
+                    <td><strong>Shared Lock (S)</strong></td>
+                    <td>For reading data</td>
+                    <td>Multiple transactions</td>
+                </tr>
+                <tr>
+                    <td><strong>Exclusive Lock (X)</strong></td>
+                    <td>For writing/updating</td>
+                    <td>Only ONE transaction</td>
+                </tr>
+            </table>
+            <div class="analogy-box">
+                Shared = Many people can read a book simultaneously<br>
+                Exclusive = Only one person can edit the book at a time
+            </div>
+        </div>
+
+        <!-- Slide 28 -->
+        <div class="slide">
+            <h1>Lock Compatibility</h1>
+            <table>
+                <tr>
+                    <th>Current Lock</th>
+                    <th>Request Shared</th>
+                    <th>Request Exclusive</th>
+                </tr>
+                <tr>
+                    <td>None</td>
+                    <td>✅ Grant</td>
+                    <td>✅ Grant</td>
+                </tr>
+                <tr>
+                    <td>Shared</td>
+                    <td>✅ Grant (Multiple readers OK)</td>
+                    <td>❌ Wait</td>
+                </tr>
+                <tr>
+                    <td>Exclusive</td>
+                    <td>❌ Wait</td>
+                    <td>❌ Wait</td>
+                </tr>
+            </table>
+            <div class="example-box">
+                <strong>Scenario:</strong> Alice's account balance<br>
+                • T1 reads balance → Gets Shared Lock ✓<br>
+                • T2 reads balance → Gets Shared Lock ✓<br>
+                • T3 wants to update → Waits for both to finish ⏳
+            </div>
         </div>
 
         <!-- Slide 29 -->
         <div class="slide">
-            <h1>Conflict Serializability</h1>
-            <h3>Definition</h3>
-            <p>Schedule is conflict serializable if equivalent to some serial schedule</p>
-            <h3>Operations Conflict When:</h3>
-            <ul>
-                <li>Different transactions</li>
-                <li>Same data item</li>
-                <li>At least one is WRITE</li>
-            </ul>
-            <h3>Conflict Types:</h3>
-            <ul>
-                <li><strong>Read-Write (RW):</strong> T1 reads, T2 writes same item</li>
-                <li><strong>Write-Read (WR):</strong> T1 writes, T2 reads same item</li>
-                <li><strong>Write-Write (WW):</strong> Both write same item</li>
-            </ul>
+            <h1>Locking in Practice</h1>
+            <h3>SQLite Handles This Automatically</h3>
+            <pre>-- What you write:
+BEGIN TRANSACTION;
+SELECT balance FROM accounts WHERE account_id = 1;
+UPDATE accounts SET balance = 4500 WHERE account_id = 1;
+COMMIT;
+
+-- What SQLite does internally:
+-- 1. Acquire Shared Lock on account 1 (for SELECT)
+-- 2. Upgrade to Exclusive Lock on account 1 (for UPDATE)
+-- 3. Hold lock until COMMIT
+-- 4. Release all locks</pre>
+            <div class="highlight info">
+                <span class="emoji">🔒</span>You don't write lock commands - database handles it!
+            </div>
         </div>
 
         <!-- Slide 30 -->
         <div class="slide">
-            <h1>Conflict Example</h1>
-            <h3>Using Alice's Account</h3>
-            <p><strong>Scenario:</strong> T1 withdraws $500, T2 adds 5% interest</p>
-            <pre>-- T1: Withdrawal
-BEGIN TRANSACTION;
-SELECT balance FROM accounts WHERE account_id = 1; -- Read: $5000
-UPDATE accounts SET balance = 4500 WHERE account_id = 1; -- Write: $4500
-COMMIT;
+            <h1>Two-Phase Locking (2PL)</h1>
+            <h3>The Golden Rule for Serializability</h3>
+            <p>Every transaction must follow two phases:</p>
+            <div class="visual-schedule">
+<strong>Phase 1: GROWING PHASE</strong>
+📈 Can ACQUIRE locks (Shared or Exclusive)
+❌ Cannot RELEASE any locks
 
--- T2: Add interest
-BEGIN TRANSACTION;
-SELECT balance FROM accounts WHERE account_id = 1; -- Read: $5000
-UPDATE accounts SET balance = 5250 WHERE account_id = 1; -- Write: $5250
-COMMIT;</pre>
-            <div class="highlight error">
-                <span class="emoji">⚠️</span>If interleaved incorrectly, results differ!
+--- LOCK POINT (Maximum locks held) ---
+
+<strong>Phase 2: SHRINKING PHASE</strong>
+📉 Can RELEASE locks
+❌ Cannot ACQUIRE new locks
             </div>
-            <div class="example-box">
-                <strong>Serial T1→T2:</strong> $5000 → $4500 → $4725 (correct)<br>
-                <strong>Serial T2→T1:</strong> $5000 → $5250 → $4750 (also correct)<br>
-                <strong>Bad interleaving:</strong> Both read $5000, one update lost!
+            <div class="highlight success">
+                <span class="emoji">✅</span><strong>Guarantee:</strong> 2PL ensures conflict serializability!
             </div>
         </div>
 
         <!-- Slide 31 -->
         <div class="slide">
-            <h1>Precedence Graph</h1>
-            <h3>Testing Serializability</h3>
-            <p><strong>Method:</strong> Create directed graph to detect conflicts</p>
-            <h3>Rules:</h3>
-            <ol>
-                <li>Create node for each transaction</li>
-                <li>Add edge T1 → T2 if T1's operation conflicts with and precedes T2's operation</li>
-                <li>If cycle exists → NOT conflict serializable</li>
-                <li>If no cycle → IS conflict serializable</li>
-            </ol>
-            <div class="highlight success">
-                <span class="emoji">✅</span>No cycles = Can be reordered to serial schedule
+            <h1>2PL Example</h1>
+            <h3>Visualizing the Phases</h3>
+            <div class="visual-schedule">
+<strong>Transaction T1:</strong>
+
+BEGIN TRANSACTION;
+
+-- GROWING PHASE: Acquire locks
+Lock Alice's row (for SELECT)          ↑
+Lock Bob's row (for UPDATE)            ↑ Acquiring
+Lock Charlie's row (for SELECT)        ↑
+
+-- Perform all operations
+SELECT * FROM accounts WHERE account_id = 1;
+UPDATE accounts SET balance = 3500 WHERE account_id = 2;
+SELECT * FROM accounts WHERE account_id = 3;
+
+--- LOCK POINT (all locks held) ---
+
+COMMIT;
+
+-- SHRINKING PHASE: Release all locks
+Unlock Alice                           ↓
+Unlock Bob                             ↓ Releasing
+Unlock Charlie                         ↓
             </div>
         </div>
 
         <!-- Slide 32 -->
         <div class="slide">
-            <h1>Precedence Graph Example</h1>
-            <h3>Three Concurrent Transactions</h3>
-            <pre>-- T1: Updates Alice
-BEGIN TRANSACTION;
-SELECT balance FROM accounts WHERE account_id = 1;
+            <h1>Strict Two-Phase Locking</h1>
+            <h3>Enhanced Version (Most Common)</h3>
+            <p><strong>Rule:</strong> Hold <strong>ALL</strong> locks until transaction commits or aborts</p>
+            <pre>BEGIN TRANSACTION;
+
+-- Acquire locks as needed
+SELECT * FROM accounts WHERE account_id = 1; -- Lock Alice
 UPDATE accounts SET balance = 4500 WHERE account_id = 1;
-COMMIT;
 
--- T2: Reads Alice, updates Bob
-BEGIN TRANSACTION;
-SELECT balance FROM accounts WHERE account_id = 1;
+SELECT * FROM accounts WHERE account_id = 2; -- Lock Bob  
 UPDATE accounts SET balance = 3500 WHERE account_id = 2;
-COMMIT;
 
--- T3: Reads Bob, updates Bob
-BEGIN TRANSACTION;
-SELECT balance FROM accounts WHERE account_id = 2;
-UPDATE accounts SET balance = 4000 WHERE account_id = 2;
-COMMIT;</pre>
-            <div class="visual-schedule">
-Conflicts:
-T1 writes Alice before T2 reads Alice → T1 → T2
-T2 writes Bob before T3 reads Bob → T2 → T3
-
-Graph: T1 → T2 → T3 (No cycle! ✓ Serializable)
-            </div>
+-- Hold ALL locks until commit
+COMMIT; -- Now release everything at once</pre>
+            <h3>Benefits:</h3>
+            <ul>
+                <li>✅ Prevents cascading rollbacks</li>
+                <li>✅ Ensures recoverability</li>
+                <li>✅ Most practical for real systems</li>
+            </ul>
         </div>
 
         <!-- Slide 33 -->
         <div class="slide">
-            <h1>Non-Serializable Example</h1>
-            <h3>Schedule with Cycle</h3>
-            <pre>-- T1: Read Alice, Write Bob
-BEGIN TRANSACTION;
-SELECT balance FROM accounts WHERE account_id = 1; -- Read Alice
-UPDATE accounts SET balance = 3500 WHERE account_id = 2; -- Write Bob
-COMMIT;
-
--- T2: Read Bob, Write Alice  
-BEGIN TRANSACTION;
-SELECT balance FROM accounts WHERE account_id = 2; -- Read Bob
-UPDATE accounts SET balance = 4500 WHERE account_id = 1; -- Write Alice
-COMMIT;</pre>
+            <h1>The Deadlock Problem</h1>
+            <h3>Circular Wait Situation</h3>
             <div class="visual-schedule">
-Conflicts:
-T1 writes Bob, T2 reads Bob → T1 → T2
-T2 writes Alice, T1 reads Alice → T2 → T1
+<strong>Time  Transaction 1              Transaction 2</strong>
+1     BEGIN;
+      UPDATE accounts 
+      SET balance = 4500
+      WHERE account_id = 1;
+      -- T1 locks Alice ✓
+      
+2                                 BEGIN;
+                                  UPDATE accounts 
+                                  SET balance = 3500
+                                  WHERE account_id = 2;
+                                  -- T2 locks Bob ✓
+                                  
+3     UPDATE accounts
+      SET balance = 2500
+      WHERE account_id = 2;
+      -- T1 waits for Bob ⏳
+      
+4                                 UPDATE accounts
+                                  SET balance = 5500
+                                  WHERE account_id = 1;
+                                  -- T2 waits for Alice ⏳
 
-Graph: T1 ⇄ T2  (Cycle exists! ❌)
-            </div>
-            <div class="highlight error">
-                <span class="emoji">❌</span>Cycle detected! NOT conflict serializable
+<strong>🔄 DEADLOCK! Both wait forever for each other</strong>
             </div>
         </div>
 
         <!-- Slide 34 -->
         <div class="slide">
-            <h1>View Serializability</h1>
-            <h3>Less Restrictive Definition</h3>
-            <p>Two schedules are view equivalent if:</p>
-            <ul>
-                <li><strong>Same initial reads:</strong> If T1 reads initial value in S1, same in S2</li>
-                <li><strong>Same read-from:</strong> If T1 reads value written by T2 in S1, same in S2</li>
-                <li><strong>Same final writes:</strong> If T1 does final write in S1, same in S2</li>
-            </ul>
-            <div class="highlight info">
-                <span class="emoji">💡</span>View serializability ⊇ Conflict serializability
+            <h1>Deadlock Prevention</h1>
+            <h3>Strategy 1: Wait-Die</h3>
+            <p><strong>Rule:</strong> Older transaction waits, younger transaction "dies" (aborts)</p>
+            <div class="example-box">
+                T1 (timestamp=10) wants lock held by T2 (timestamp=20)<br>
+                → T1 waits (older, has priority)<br><br>
+                T2 (timestamp=20) wants lock held by T1 (timestamp=10)<br>
+                → T2 dies/aborts (younger, must yield)
             </div>
+            <h3>Strategy 2: Wound-Wait</h3>
+            <p><strong>Rule:</strong> Older transaction "wounds" (forces abort of) younger, younger waits</p>
         </div>
 
         <!-- Slide 35 -->
         <div class="slide">
-            <h1>Recoverable Schedules</h1>
-            <h3>Definition</h3>
-            <p>Transaction commits only after all transactions whose changes it read have committed</p>
-            <h3>Example - Recoverable:</h3>
-            <div class="visual-schedule">
--- T1 updates Alice's balance
+            <h1>Deadlock Prevention</h1>
+            <h3>Strategy 3: Ordered Locking (Best!)</h3>
+            <p>All transactions acquire locks in same order (e.g., by account_id)</p>
+            <pre>-- Rule: Always lock in ascending account_id order
+
+-- Transaction 1
 BEGIN TRANSACTION;
-UPDATE accounts SET balance = 4500 WHERE account_id = 1;
--- T1 NOT committed yet
+UPDATE accounts SET balance = 4500 WHERE account_id = 1; -- Lock 1
+UPDATE accounts SET balance = 2500 WHERE account_id = 2; -- Lock 2
+COMMIT;
 
--- T2 reads the uncommitted value (in READ UNCOMMITTED mode)
--- Then waits for T1 to commit
+-- Transaction 2 (follows same order)
 BEGIN TRANSACTION;
-SELECT balance FROM accounts WHERE account_id = 1; -- Sees $4500
-
--- T1 commits first
-COMMIT; -- T1
-
--- Now T2 can safely commit
-COMMIT; -- T2
-            </div>
+UPDATE accounts SET balance = 5500 WHERE account_id = 1; -- Waits for T1
+UPDATE accounts SET balance = 3500 WHERE account_id = 2; -- Then gets this
+COMMIT;</pre>
             <div class="highlight success">
-                <span class="emoji">✅</span>This is recoverable - T2 commits AFTER T1
+                <span class="emoji">✅</span>No circular wait! T2 waits for T1, but T1 never waits for T2
             </div>
         </div>
 
         <!-- Slide 36 -->
         <div class="slide">
-            <h1>Non-Recoverable Schedule</h1>
-            <h3>Dangerous Scenario</h3>
+            <h1>Deadlock Detection</h1>
+            <h3>Wait-For Graph Method</h3>
+            <p>Build a graph where edge T1 → T2 means "T1 waiting for lock held by T2"</p>
             <div class="visual-schedule">
--- T1 updates Alice
-BEGIN TRANSACTION;
-UPDATE accounts SET balance = 4500 WHERE account_id = 1;
--- T1 NOT committed yet
+<strong>Scenario:</strong>
+T1 holds Alice, wants Bob (held by T2)
+T2 holds Bob, wants Charlie (held by T3)
+T3 holds Charlie, wants Alice (held by T1)
 
--- T2 reads uncommitted value and commits FIRST
-BEGIN TRANSACTION;
-SELECT balance FROM accounts WHERE account_id = 1; -- Reads $4500
-COMMIT; -- T2 commits ❌
+<strong>Wait-For Graph:</strong>
+T1 → T2 (T1 waits for T2)
+T2 → T3 (T2 waits for T3)
+T3 → T1 (T3 waits for T1)
 
--- T1 rolls back!
-ROLLBACK; -- T1 aborts
+<strong>Cycle: T1 → T2 → T3 → T1</strong>
+
+<strong>Resolution:</strong> Abort one transaction (e.g., T3) to break cycle
             </div>
-            <div class="highlight error">
-                <span class="emoji">💥</span><strong>Problem:</strong> T2 committed based on data that was rolled back!
-                <br>Database now in inconsistent state - cannot recover
-            </div>
-            <p><strong>Note:</strong> SQLite's default SERIALIZABLE isolation prevents this</p>
         </div>
+
+        <!-- DATABASE RECOVERY SECTION -->
 
         <!-- Slide 37 -->
         <div class="slide">
-            <h1>Cascading Rollbacks</h1>
-            <h3>The Domino Effect</h3>
-            <div class="timeline">
-                <div class="timeline-item">T1: UPDATE accounts SET balance = 4500 WHERE account_id = 1;</div>
-                <div class="timeline-item">T2: SELECT balance FROM accounts WHERE account_id = 1; -- Reads $4500</div>
-                <div class="timeline-item">T3: SELECT balance FROM accounts WHERE account_id = 1; -- Reads $4500</div>
-                <div class="timeline-item">T4: SELECT balance FROM accounts WHERE account_id = 1; -- Reads $4500</div>
-                <div class="timeline-item">T1: ROLLBACK; → Forces T2, T3, T4 to rollback too!</div>
+            <h1>Database Recovery</h1>
+            <h3>Why Do We Need Recovery?</h3>
+            <p>Systems fail! Recovery ensures committed transactions survive and uncommitted transactions are undone.</p>
+            <div class="analogy-box">
+                Auto-save for your database. Finished chapters (committed transactions) are saved, unfinished paragraphs (uncommitted) are discarded.
             </div>
-            <div class="highlight error">
-                <span class="emoji">📉</span>One failure cascades through multiple transactions
-            </div>
-            <p><strong>Note:</strong> In practice, databases prevent this with proper isolation levels</p>
+            <h3>Types of Failures:</h3>
+            <ul>
+                <li><strong>Transaction Failure:</strong> Logic error, constraint violation</li>
+                <li><strong>System Crash:</strong> Power failure, OS crash</li>
+                <li><strong>Disk Failure:</strong> Hardware dies</li>
+            </ul>
         </div>
 
         <!-- Slide 38 -->
         <div class="slide">
-            <h1>Cascadeless Schedules</h1>
-            <h3>Prevention Strategy</h3>
-            <p>Transaction reads value only after the writing transaction commits</p>
+            <h1>Log-Based Recovery</h1>
+            <h3>The Transaction Log</h3>
+            <p>A <strong>sequential file</strong> that records every change made to the database.</p>
             <div class="visual-schedule">
-<strong>Cascadeless Schedule:</strong>
--- T1 updates and commits first
-BEGIN TRANSACTION;
-UPDATE accounts SET balance = 4500 WHERE account_id = 1;
-COMMIT; -- T1 commits
+<strong>Log Record Types:</strong>
 
--- Now T2 can safely read
-BEGIN TRANSACTION;
-SELECT balance FROM accounts WHERE account_id = 1; -- Reads $4500
-COMMIT; -- T2 commits
+[Ti, START]              ← Transaction Ti started
+[Ti, X, old_val, new_val] ← Ti changed X from old to new
+[Ti, COMMIT]             ← Ti completed successfully
+[Ti, ABORT]              ← Ti was cancelled
+[CHECKPOINT]             ← System checkpoint taken
             </div>
-            <div class="highlight success">
-                <span class="emoji">🛡️</span>No cascading rollbacks possible - T2 only reads committed data
+            <div class="highlight info">
+                <span class="emoji">📝</span>The log is the "black box" of the database
             </div>
-            <p><strong>Implementation:</strong> READ COMMITTED or higher isolation level</p>
         </div>
 
         <!-- Slide 39 -->
         <div class="slide">
-            <h1>Lock-Based Protocols</h1>
-            <h3>Concurrency Control Mechanism</h3>
-            <p>Use locks to control access to data items</p>
-            <h3>Two Types of Locks:</h3>
-            <ul>
-                <li><strong>Shared Lock (S):</strong> Multiple transactions can read</li>
-                <li><strong>Exclusive Lock (X):</strong> Only one transaction can write</li>
-            </ul>
-            <h3>Operations:</h3>
-            <ul>
-                <li><code>lock-S(item)</code> - Acquire shared lock</li>
-                <li><code>lock-X(item)</code> - Acquire exclusive lock</li>
-                <li><code>unlock(item)</code> - Release lock</li>
-            </ul>
+            <h1>Example Log Sequence</h1>
+            <h3>Bank Transfers with Log</h3>
+            <pre>1. [T1, START]
+2. [T1, Alice, 5000, 4500]      ← Alice: $5000 → $4500
+3. [T1, Bob, 3000, 3500]        ← Bob: $3000 → $3500
+4. [T1, COMMIT]                 ← T1 successful ✓
+
+5. [T2, START]
+6. [T2, Charlie, 7500, 7000]    ← Charlie: $7500 → $7000
+7. -- SYSTEM CRASH! --</pre>
+            <h3>After Recovery:</h3>
+            <div class="example-box">
+                <strong>T1:</strong> Has COMMIT → Changes stay (Alice=$4500, Bob=$3500) ✓<br>
+                <strong>T2:</strong> No COMMIT → Changes undone (Charlie=$7500) ✓
+            </div>
         </div>
 
         <!-- Slide 40 -->
         <div class="slide">
-            <h1>Lock Compatibility Matrix</h1>
-            <table>
-                <tr>
-                    <th>Current Lock</th>
-                    <th>Requested: Shared</th>
-                    <th>Requested: Exclusive</th>
-                </tr>
-                <tr>
-                    <td><strong>None</strong></td>
-                    <td>✅ Granted</td>
-                    <td>✅ Granted</td>
-                </tr>
-                <tr>
-                    <td><strong>Shared</strong></td>
-                    <td>✅ Granted</td>
-                    <td>❌ Wait</td>
-                </tr>
-                <tr>
-                    <td><strong>Exclusive</strong></td>
-                    <td>❌ Wait</td>
-                    <td>❌ Wait</td>
-                </tr>
-            </table>
-            <div class="highlight info">
-                <span class="emoji">🔐</span>Multiple readers OK, but writers need exclusive access
+            <h1>Write-Ahead Logging (WAL)</h1>
+            <h3>Critical Rule</h3>
+            <div class="highlight error">
+                <span class="emoji">📝</span><strong>Log record MUST be written to disk BEFORE the actual database changes!</strong>
+            </div>
+            <p><strong>Why?</strong> If we crash after changing data but before writing log, we don't know what happened!</p>
+            <div class="example-box">
+                <strong>Correct Order:</strong>
+                <ol class="step-list">
+                    <li>Transaction wants to update Alice's balance</li>
+                    <li><strong>FIRST:</strong> Write log [T1, Alice, 5000, 4500] to disk</li>
+                    <li><strong>THEN:</strong> Update Alice's balance in database</li>
+                    <li>If crash between steps 2-3 → Can recover from log!</li>
+                </ol>
             </div>
         </div>
 
         <!-- Slide 41 -->
         <div class="slide">
-            <h1>Locking Example</h1>
-            <h3>Transfer Using Locks (Conceptual)</h3>
-            <pre>-- Note: SQLite doesn't expose lock commands directly
--- This shows the concept that happens internally
-
-BEGIN TRANSACTION;
-
--- SQLite internally acquires locks when you access data
-SELECT balance FROM accounts WHERE account_id = 1; 
--- Acquires shared lock on Alice's row
-
-UPDATE accounts SET balance = balance - 500 
-WHERE account_id = 1;
--- Upgrades to exclusive lock on Alice's row
-
-SELECT balance FROM accounts WHERE account_id = 2;
-UPDATE accounts SET balance = balance + 500 
-WHERE account_id = 2;
--- Acquires exclusive lock on Bob's row
-
-COMMIT;
--- Releases all locks</pre>
+            <h1>Recovery Operations</h1>
+            <h3>Two Key Operations</h3>
+            <table>
+                <tr>
+                    <th>Operation</th>
+                    <th>When Used</th>
+                    <th>How It Works</th>
+                </tr>
+                <tr>
+                    <td><strong>UNDO</strong></td>
+                    <td>Transaction started but didn't commit</td>
+                    <td>Read log backwards, restore OLD values</td>
+                </tr>
+                <tr>
+                    <td><strong>REDO</strong></td>
+                    <td>Transaction committed but changes might not be on disk</td>
+                    <td>Read log forward, apply NEW values</td>
+                </tr>
+            </table>
         </div>
 
         <!-- Slide 42 -->
         <div class="slide">
-            <h1>Two-Phase Locking (2PL)</h1>
-            <h3>Protocol Rules</h3>
-            <p>Transaction divided into two phases:</p>
-            <h3>Phase 1: Growing Phase</h3>
-            <ul>
-                <li>Can acquire locks</li>
-                <li>Cannot release any locks</li>
-            </ul>
-            <h3>Phase 2: Shrinking Phase</h3>
-            <ul>
-                <li>Can release locks</li>
-                <li>Cannot acquire new locks</li>
-            </ul>
-            <div class="highlight success">
-                <span class="emoji">📈</span>Guarantees conflict serializability
+            <h1>UNDO - Rollback Uncommitted</h1>
+            <h3>Example</h3>
+            <pre>-- Log shows:
+[T2, START]
+[T2, Alice, 5000, 4500]
+-- NO COMMIT! System crashed
+
+-- Recovery performs UNDO:
+-- Read log backwards
+-- Find [T2, Alice, 5000, 4500]
+-- Restore Alice = 5000 (OLD value)
+
+UPDATE accounts SET balance = 5000 WHERE account_id = 1;</pre>
+            <div class="highlight info">
+                <span class="emoji">↩️</span><strong>UNDO:</strong> Restore old values for uncommitted transactions
             </div>
         </div>
 
         <!-- Slide 43 -->
         <div class="slide">
-            <h1>2PL Example</h1>
-            <h3>Visualizing the Phases</h3>
-            <p><strong>Conceptual view of Two-Phase Locking:</strong></p>
-            <div class="visual-schedule">
-<strong>Growing Phase (Acquiring Locks):</strong>
-BEGIN TRANSACTION;
-SELECT * FROM accounts WHERE account_id = 1;  -- Lock Alice ↑
-SELECT * FROM accounts WHERE account_id = 2;  -- Lock Bob ↑
-SELECT * FROM accounts WHERE account_id = 3;  -- Lock Charlie ↑
+            <h1>REDO - Reapply Committed</h1>
+            <h3>Example</h3>
+            <pre>-- Log shows:
+[T1, START]
+[T1, Bob, 3000, 3500]
+[T1, COMMIT] ✓
 
---- Lock Point (maximum locks held) ---
+-- Recovery performs REDO:
+-- Read log forward
+-- Find [T1, Bob, 3000, 3500] with COMMIT
+-- Apply Bob = 3500 (NEW value)
 
-<strong>Shrinking Phase (Releasing Locks):</strong>
-COMMIT; -- Release all locks ↓
--- Alice unlocked ↓
--- Bob unlocked ↓
--- Charlie unlocked ↓
+UPDATE accounts SET balance = 3500 WHERE account_id = 2;</pre>
+            <div class="highlight success">
+                <span class="emoji">♻️</span><strong>REDO:</strong> Reapply new values for committed transactions
             </div>
-            <p><strong>Note:</strong> SQLite implements this automatically</p>
         </div>
 
         <!-- Slide 44 -->
         <div class="slide">
-            <h1>Strict Two-Phase Locking</h1>
-            <h3>Enhanced 2PL</h3>
-            <p><strong>Rule:</strong> Exclusive locks held until transaction commits or aborts</p>
-            <pre>BEGIN TRANSACTION;
-lock-X(Alice);
--- ... operations ...
-lock-X(Bob);
--- ... operations ...
-COMMIT;               -- Release ALL locks here
-unlock(Alice);
-unlock(Bob);</pre>
-            <h3>Benefits:</h3>
-            <ul>
-                <li>Prevents cascading rollbacks</li>
-                <li>Ensures recoverability</li>
-                <li>Most widely used in practice</li>
-            </ul>
+            <h1>The Checkpoint Problem</h1>
+            <h3>Why Checkpoints?</h3>
+            <p><strong>Problem:</strong> Transaction logs grow huge! Can't read entire log on every recovery.</p>
+            <p><strong>Solution:</strong> Periodically create checkpoints</p>
+            <div class="analogy-box">
+                Like bookmarks in a book. Instead of reading from page 1, start from your bookmark!
+            </div>
         </div>
 
         <!-- Slide 45 -->
         <div class="slide">
-            <h1>Deadlock Scenario</h1>
-            <h3>Circular Wait</h3>
-            <div class="visual-schedule">
-<strong>Time  T1                      T2</strong>
-1     lock-X(Alice) ✓
-2                             lock-X(Bob) ✓
-3     lock-X(Bob) ⏳
-      -- Waiting for T2...
-4                             lock-X(Alice) ⏳
-                              -- Waiting for T1...
-            </div>
-            <div class="highlight error">
-                <span class="emoji">🔄</span><strong>Deadlock!</strong> Both transactions waiting forever
+            <h1>Checkpoint Process</h1>
+            <h3>How Checkpoints Work</h3>
+            <ol class="step-list">
+                <li>Stop accepting new transactions (briefly)</li>
+                <li>Complete all active transactions</li>
+                <li>Flush all changes from memory to disk</li>
+                <li>Write [CHECKPOINT] to log</li>
+                <li>Resume normal operations</li>
+            </ol>
+            <div class="highlight success">
+                <span class="emoji">🔖</span><strong>Benefit:</strong> During recovery, only need to read log from last checkpoint!
             </div>
         </div>
 
         <!-- Slide 46 -->
         <div class="slide">
-            <h1>Deadlock Prevention</h1>
-            <h3>Strategy 1: Wait-Die</h3>
-            <p>Older transaction waits, younger dies</p>
+            <h1>Recovery with Checkpoint</h1>
+            <h3>Example</h3>
+            <pre>[T1, START]
+[T1, Alice, 5000, 4500]
+[T1, COMMIT]
+[T2, START]
+[T2, Bob, 3000, 2500]
+[T2, COMMIT]
+[CHECKPOINT] ← Everything before is safely on disk
+[T3, START]
+[T3, Charlie, 7500, 8000]
+[T3, COMMIT]
+[T4, START]
+[T4, Diana, 2000, 2500]
+-- CRASH! --</pre>
+            <h3>Recovery:</h3>
             <div class="example-box">
-                T1 (timestamp=10) wants lock held by T2 (timestamp=20)
-                <br>→ T1 waits (older)
-                <br><br>T2 (timestamp=20) wants lock held by T1 (timestamp=10)
-                <br>→ T2 dies/rollback (younger)
+                <strong>Ignore:</strong> T1, T2 (before checkpoint - already on disk)<br>
+                <strong>REDO:</strong> T3 (committed after checkpoint)<br>
+                <strong>UNDO:</strong> T4 (no commit)
             </div>
-            <h3>Strategy 2: Wound-Wait</h3>
-            <p>Older transaction wounds younger, younger waits</p>
         </div>
 
         <!-- Slide 47 -->
         <div class="slide">
-            <h1>Deadlock Prevention</h1>
-            <h3>Strategy 3: Ordered Locking</h3>
-            <p>All transactions acquire locks in same order</p>
-            <pre>-- Rule: Always lock in order: Alice, Bob, Charlie, Diana
-
--- Both transactions follow same order:
-T1: lock-X(Alice)  ✓
-T1: lock-X(Bob)    ✓
-
-T2: lock-X(Alice)  ⏳ -- Waits for T1
-T2: lock-X(Bob)    -- Will wait</pre>
-            <div class="highlight success">
-                <span class="emoji">✅</span>No circular wait possible!
-            </div>
+            <h1>Complete Recovery Algorithm</h1>
+            <h3>Step-by-Step Process</h3>
+            <ol class="step-list">
+                <li>Find last <strong>CHECKPOINT</strong> in log</li>
+                <li>Scan forward from checkpoint, create two lists:
+                    <ul>
+                        <li><strong>UNDO list:</strong> Transactions without COMMIT</li>
+                        <li><strong>REDO list:</strong> Transactions with COMMIT</li>
+                    </ul>
+                </li>
+                <li><strong>UNDO Phase:</strong> Go backwards, restore old values</li>
+                <li><strong>REDO Phase:</strong> Go forward, apply new values</li>
+                <li>Database is consistent! ✓</li>
+            </ol>
         </div>
 
         <!-- Slide 48 -->
         <div class="slide">
-            <h1>Deadlock Detection</h1>
-            <h3>Wait-For Graph</h3>
-            <p>Build graph where edge T1 → T2 means T1 waiting for lock held by T2</p>
+            <h1>Recovery Example Walkthrough</h1>
+            <pre>[CHECKPOINT]
+[T1, START]
+[T1, Alice, 5000, 4000]
+[T1, COMMIT]           ← Goes to REDO list
+[T2, START]
+[T2, Bob, 3000, 2500]
+[T2, Charlie, 7500, 8000]
+-- NO COMMIT           ← Goes to UNDO list
+-- CRASH! --</pre>
+            <h3>Recovery Process:</h3>
             <div class="visual-schedule">
-T1 waiting for lock on Alice (held by T2)
-T2 waiting for lock on Bob (held by T3)
-T3 waiting for lock on Charlie (held by T1)
+<strong>Phase 1: UNDO T2 (backwards)</strong>
+- Set Charlie = 7500 (old value)
+- Set Bob = 3000 (old value)
 
-Graph: T1 → T2 → T3 → T1
+<strong>Phase 2: REDO T1 (forward)</strong>
+- Set Alice = 4000 (new value)
 
-Cycle detected! Deadlock exists.
+<strong>Final State:</strong>
+Alice = $4000 ✓, Bob = $3000 ✓, Charlie = $7500 ✓
             </div>
-            <h3>Resolution:</h3>
-            <p>Abort one transaction in the cycle (victim selection)</p>
         </div>
 
         <!-- Slide 49 -->
         <div class="slide">
-            <h1>Timestamp Ordering</h1>
-            <h3>Alternative to Locking</h3>
-            <p>Each transaction gets unique timestamp when it starts</p>
-            <h3>Rules:</h3>
-            <ul>
-                <li>If T1 wants to read/write item last written by T2</li>
-                <li>If TS(T1) < TS(T2): Abort T1 (too old)</li>
-                <li>If TS(T1) > TS(T2): Allow operation</li>
-            </ul>
-            <div class="example-box">
-                T1 (TS=100) tries to read Alice
-                <br>Last write by T2 (TS=150)
-                <br>→ T1 aborted (reading "future" data)
-            </div>
+            <h1>Summary: Recovery Concepts</h1>
+            <table>
+                <tr>
+                    <th>Concept</th>
+                    <th>Purpose</th>
+                    <th>Key Point</th>
+                </tr>
+                <tr>
+                    <td><strong>Transaction Log</strong></td>
+                    <td>Record all changes</td>
+                    <td>Sequential file of all operations</td>
+                </tr>
+                <tr>
+                    <td><strong>Write-Ahead Logging</strong></td>
+                    <td>Ensure recoverability</td>
+                    <td>Log BEFORE database change</td>
+                </tr>
+                <tr>
+                    <td><strong>UNDO</strong></td>
+                    <td>Rollback uncommitted</td>
+                    <td>Restore old values</td>
+                </tr>
+                <tr>
+                    <td><strong>REDO</strong></td>
+                    <td>Reapply committed</td>
+                    <td>Apply new values</td>
+                </tr>
+                <tr>
+                    <td><strong>Checkpoint</strong></td>
+                    <td>Limit log scanning</td>
+                    <td>Start recovery here</td>
+                </tr>
+            </table>
         </div>
 
         <!-- Slide 50 -->
         <div class="slide">
-            <h1>Summary: Concurrency Control</h1>
-            <h3>Main Techniques:</h3>
-            <ul>
-                <li><strong>Lock-Based:</strong> 2PL, Strict 2PL</li>
-                <li><strong>Timestamp-Based:</strong> Timestamp ordering</li>
-                <li><strong>Optimistic:</strong> Validate at commit time</li>
-                <li><strong>Multi-Version:</strong> MVCC (Multiple versions)</li>
-            </ul>
-            <div class="highlight">
-                <span class="emoji">🎯</span>Choice depends on: workload type, read/write ratio, conflict frequency
-            </div>
+            <h1>Putting It All Together</h1>
+            <h3>Complete Transaction Lifecycle</h3>
+            <ol class="step-list">
+                <li><strong>BEGIN TRANSACTION</strong> - Write [T1, START] to log</li>
+                <li><strong>Execute Operations</strong> - For each change, write log entry first (WAL)</li>
+                <li><strong>Acquire Locks</strong> - Follow 2PL protocol for concurrency</li>
+                <li><strong>Check Serializability</strong> - Precedence graph has no cycles</li>
+                <li><strong>COMMIT</strong> - Write [T1, COMMIT], release locks</li>
+                <li><strong>If Crash</strong> - Use log to UNDO uncommitted, REDO committed</li>
+            </ol>
         </div>
 
         <!-- Slide 51 -->
         <div class="slide">
-            <h1>Practical Example Review</h1>
-            <h3>Real Transaction on Our Database</h3>
-            <pre>-- Alice transfers $1000 to Bob with full ACID
-SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+            <h1>Real-World Example</h1>
+            <h3>Complete Safe Transfer</h3>
+            <pre>-- 1. Start transaction (log: [T1, START])
 BEGIN TRANSACTION;
 
--- Get locks and check balance
-SELECT balance FROM accounts 
-WHERE account_id = 1 FOR UPDATE;  -- Exclusive lock
+-- 2. Read and verify (acquires shared locks)
+SELECT balance FROM accounts WHERE account_id = 1; -- $5000
 
--- Verify sufficient funds
-IF balance >= 1000 THEN
-    UPDATE accounts SET balance = balance - 1000 
-    WHERE account_id = 1;
-    
-    UPDATE accounts SET balance = balance + 1000 
-    WHERE account_id = 2;
-    
-    COMMIT;  -- All ACID properties enforced
-ELSE
-    ROLLBACK;
-END IF;</pre>
+-- 3. Deduct (log first, then update)
+-- Log: [T1, Alice, 5000, 4000]
+UPDATE accounts SET balance = 4000 WHERE account_id = 1;
+
+-- 4. Add (log first, then update)
+-- Log: [T1, Bob, 3000, 4000]
+UPDATE accounts SET balance = 4000 WHERE account_id = 2;
+
+-- 5. Commit (log: [T1, COMMIT], release locks)
+COMMIT;
+
+-- All ACID properties enforced:
+-- ✓ Atomicity: Both or neither
+-- ✓ Consistency: Total = $17,500 before and after
+-- ✓ Isolation: Locks prevent interference
+-- ✓ Durability: Log ensures survival of crash</pre>
         </div>
 
         <!-- Slide 52 -->
         <div class="slide">
-            <h1>Course Summary</h1>
-            <h3>Key Concepts Covered:</h3>
+            <h1>Key Takeaways</h1>
+            <h3>What You Need to Remember</h3>
+            <div class="highlight success">
+                <span class="emoji">📅</span><strong>Schedules:</strong> Order matters! Serial is safe, concurrent needs control
+            </div>
+            <div class="highlight info">
+                <span class="emoji">🔄</span><strong>Serializability:</strong> Use precedence graphs - no cycles = good!
+            </div>
+            <div class="highlight">
+                <span class="emoji">🔒</span><strong>Locking:</strong> 2PL guarantees serializability, watch for deadlocks
+            </div>
+            <div class="highlight error">
+                <span class="emoji">💾</span><strong>Recovery:</strong> Log everything, checkpoint periodically, UNDO/REDO after crash
+            </div>
+        </div>
+
+        <!-- Slide 53 -->
+        <div class="slide">
+            <h1>Practice Questions</h1>
+            <h3>Test Your Understanding</h3>
+            <div class="example-box">
+                <strong>Q1:</strong> If precedence graph has a cycle, is the schedule serializable?<br>
+                <strong>A:</strong> No - cycle means NOT conflict serializable
+            </div>
+            <div class="example-box">
+                <strong>Q2:</strong> What's the difference between UNDO and REDO?<br>
+                <strong>A:</strong> UNDO restores old values (uncommitted), REDO applies new values (committed)
+            </div>
+            <div class="example-box">
+                <strong>Q3:</strong> Why do we need Write-Ahead Logging?<br>
+                <strong>A:</strong> To ensure log is written before data changes, enabling recovery
+            </div>
+        </div>
+
+        <!-- Slide 54 -->
+        <div class="slide">
+            <h1>Course Complete! 🎓</h1>
+            <h2>You've Mastered:</h2>
             <ul>
-                <li>✅ <strong>ACID Properties:</strong> Atomicity, Consistency, Isolation, Durability</li>
-                <li>✅ <strong>Isolation Problems:</strong> Dirty reads, non-repeatable reads, phantoms</li>
-                <li>✅ <strong>Schedules:</strong> Serial, concurrent, serializable</li>
-                <li>✅ <strong>Serializability:</strong> Conflict and view serializability</li>
-                <li>✅ <strong>Concurrency Control:</strong> Locking protocols, 2PL</li>
-                <li>✅ <strong>Deadlocks:</strong> Prevention, detection, resolution</li>
+                <li>✅ ACID Properties</li>
+                <li>✅ Transaction Schedules</li>
+                <li>✅ Serializability Testing</li>
+                <li>✅ Concurrency Control (Locking, 2PL)</li>
+                <li>✅ Deadlock Handling</li>
+                <li>✅ Database Recovery</li>
+                <li>✅ Log-Based Recovery</li>
+                <li>✅ Checkpoints</li>
             </ul>
+            <div class="highlight success" style="margin-top: 30px; font-size: 1.2em;">
+                <span class="emoji">🌟</span>You're now ready to design and manage robust database systems!
+            </div>
         </div>
 
         <div class="controls">
             <button id="prevBtn" onclick="changeSlide(-1)">← Previous</button>
             <span class="slide-counter">
-                <span id="currentSlide">1</span> / <span id="totalSlides">52</span>
+                <span id="currentSlide">1</span> / <span id="totalSlides">54</span>
             </span>
             <button id="nextBtn" onclick="changeSlide(1)">Next →</button>
         </div>
